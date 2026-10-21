@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buy AI Credits</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0d13; --card: #151821; --border: #2a2f3d; --text: #f0f2f7;
+      --muted: #8b92a5; --primary: #22c55e; --primary-hover: #16a34a;
+      --danger: #ef4444; --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text);
+      min-height: 100vh;
+      background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34,197,94,0.12), transparent);
+    }
+    .container { max-width: 520px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+    h1 { font-size: 1.75rem; font-weight: 800; text-align: center; margin-bottom: 0.3rem; }
+    .sub { text-align: center; color: var(--muted); margin-bottom: 1.8rem; font-size: 0.95rem; }
+    .products { display: grid; gap: 0.8rem; margin-bottom: 1.5rem; }
+    .product {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.1rem 1.25rem; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center;
+    }
+    .product:hover, .product.selected { border-color: var(--primary); background: rgba(34,197,94,0.06); }
+    .product h3 { font-size: 1.05rem; font-weight: 700; }
+    .product p { color: var(--muted); font-size: 0.85rem; margin-top: 0.15rem; }
+    .product .price { font-size: 1.2rem; font-weight: 800; color: var(--primary); }
+    .panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.4rem; margin-top: 1rem;
+    }
+    .panel.hidden { display: none; }
+    .panel h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; }
+    input, select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 0.8rem 1rem; border-radius: 10px; font-size: 1rem; margin-bottom: 1rem; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); }
+    .methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
+    .method {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.7rem; text-align: center; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+    }
+    .method.selected { border-color: var(--primary); background: rgba(34,197,94,0.1); color: var(--primary); }
+    button {
+      width: 100%; background: var(--primary); color: #fff; border: none; padding: 0.95rem;
+      border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer;
+    }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .error { color: var(--danger); font-size: 0.9rem; margin-top: 0.6rem; }
+    .pay-box {
+      background: var(--bg); border: 1px dashed var(--border); border-radius: 12px;
+      padding: 1.2rem; margin-top: 1rem; text-align: center;
+    }
+    .pay-box .ref { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.05em; margin: 0.5rem 0; color: var(--primary); }
+    .pay-box .detail { font-size: 0.95rem; line-height: 1.7; margin: 0.8rem 0; word-break: break-all; }
+    .pay-box .amount { font-size: 1.5rem; font-weight: 800; }
+    .copy-btn {
+      background: transparent; border: 1px solid var(--border); color: var(--text);
+      padding: 0.5rem 1rem; font-size: 0.85rem; width: auto; margin-top: 0.5rem;
+    }
+    .note { color: var(--muted); font-size: 0.8rem; margin-top: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Buy AI Credits</h1>
+    <p class="sub">₦500 = 1 AI Credit · Choose package & pay</p>
+
+    <div id="step1">
+      <div class="products" id="products">Loading...</div>
+    </div>
+
+    <div id="step2" class="panel hidden">
+      <h2>Your details</h2>
+      <label>Email</label>
+      <input type="email" id="email" placeholder="you@email.com">
+      <label>Payment method</label>
+      <div class="methods" id="methods">
+        <div class="method" data-type="bank" onclick="pickMethod('bank')">Bank</div>
+        <div class="method" data-type="crypto" onclick="pickMethod('crypto')">Crypto</div>
+        <div class="method" data-type="giftcard" onclick="pickMethod('giftcard')">Gift Card</div>
+      </div>
+      <button id="continue-btn" onclick="createOrder()">Continue to payment</button>
+      <p id="error" class="error"></p>
+    </div>
+
+    <div id="step3" class="panel hidden">
+      <h2>Make payment</h2>
+      <div class="pay-box" id="pay-box"></div>
+      <p class="note">After paying, your order will be reviewed and credits added. Keep your reference.</p>
+      <button class="copy-btn" style="width:100%;margin-top:1rem" onclick="location.reload()">New order</button>
+    </div>
+  </div>
+
+  <script>
+    let selectedProduct = null;
+    let selectedMethod = null;
+    let products = [];
+
+    async function load() {
+      try {
+        const res = await fetch('/api/products');
+        products = await res.json();
+        document.getElementById('products').innerHTML = products.map(p => `
+          <div class="product" data-id="${p.id}" onclick="selectProduct(${p.id})">
+            <div>
+              <h3>${esc(p.name)}</h3>
+              <p>${esc(p.description || '')}</p>
+            </div>
+            <div class="price">₦${Number(p.price).toLocaleString()}</div>
+          </div>
+        `).join('');
+      } catch (e) {
+        document.getElementById('products').innerHTML = '<p class="error">Server not running. Start it with npm start.</p>';
+      }
+    }
+
+    function selectProduct(id) {
+      selectedProduct = id;
+      document.querySelectorAll('.product').forEach(el => el.classList.toggle('selected', el.dataset.id == id));
+      document.getElementById('step2').classList.remove('hidden');
+      document.getElementById('step2').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function pickMethod(type) {
+      selectedMethod = type;
+      document.querySelectorAll('.method').forEach(el => el.classList.toggle('selected', el.dataset.type === type));
+    }
+
+    async function createOrder() {
+      const email = document.getElementById('email').value.trim();
+      const err = document.getElementById('error');
+      err.textContent = '';
+      if (!email || !email.includes('@')) { err.textContent = 'Enter a valid email'; return; }
+      if (!selectedProduct) { err.textContent = 'Select a package'; return; }
+      if (!selectedMethod) { err.textContent = 'Select payment method'; return; }
+
+      const btn = document.getElementById('continue-btn');
+      btn.disabled = true; btn.textContent = 'Creating...';
+
+      try {
+        const res = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, product_id: selectedProduct, payment_type: selectedMethod })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+
+        showPayment(data);
+      } catch (e) {
+        err.textContent = e.message || 'Error';
+        btn.disabled = false; btn.textContent = 'Continue to payment';
+      }
+    }
+
+    function showPayment(data) {
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('step3').classList.remove('hidden');
+
+      const p = data.payment;
+      let detailHtml = '';
+      if (data.payment_type === 'bank' || p.type === 'bank') {
+        detailHtml = `
+          <div><strong>${esc(p.bank_name || '')}</strong></div>
+          <div>${esc(p.account_name || '')}</div>
+          <div style="font-size:1.25rem;font-weight:700;margin:0.4rem 0">${esc(p.account_number || '')}</div>
+        `;
+      } else if (p.type === 'crypto') {
+        detailHtml = `
+          <div><strong>USDT (${esc(p.crypto_network || 'TRC20')})</strong></div>
+          <div style="font-size:0.9rem;margin:0.5rem 0;word-break:break-all">${esc(p.crypto_address || '')}</div>
+        `;
+      } else {
+        detailHtml = `<div>${esc(p.giftcard_info || p.label || 'Follow gift card instructions')}</div>`;
+      }
+
+      document.getElementById('pay-box').innerHTML = `
+        <div class="amount">₦${Number(data.amount).toLocaleString()}</div>
+        <div style="color:var(--muted);font-size:0.9rem">${esc(data.product_name)}</div>
+        <div class="ref">${esc(data.reference)}</div>
+        <div style="color:var(--muted);font-size:0.8rem;margin-bottom:0.8rem">Use this reference when paying</div>
+        <div class="detail">${detailHtml}</div>
+        <button class="copy-btn" onclick="copyText('${data.reference}')">Copy Reference</button>
+      `;
+    }
+
+    function copyText(t) {
+      navigator.clipboard.writeText(t).then(() => alert('Copied: ' + t)).catch(() => prompt('Copy:', t));
+    }
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    load();
+  </script>
+</body>
+</html>

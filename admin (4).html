@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin · Payments</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0d13; --card: #151821; --border: #2a2f3d; --text: #f0f2f7;
+      --muted: #8b92a5; --primary: #22c55e; --danger: #ef4444; --warning: #f59e0b; --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .container { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.5rem; font-weight: 800; }
+    .login-box {
+      max-width: 360px; margin: 4rem auto; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.8rem;
+    }
+    input, select, textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 0.7rem 0.9rem; border-radius: 8px; font-size: 0.95rem; margin-bottom: 0.8rem; outline: none;
+    }
+    button, .btn {
+      background: var(--primary); color: #fff; border: none; padding: 0.7rem 1.1rem;
+      border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.9rem;
+    }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: var(--danger); }
+    .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
+    .hidden { display: none !important; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin: 1.2rem 0; }
+    .stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .stat .label { color: var(--muted); font-size: 0.75rem; }
+    .stat .value { font-size: 1.4rem; font-weight: 800; margin-top: 0.2rem; }
+    .tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.45rem 0.9rem; border-radius: 8px; cursor: pointer; }
+    .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { padding: 0.7rem 0.9rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
+    .status { padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .status.pending { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .status.paid { background: rgba(34,197,94,0.15); color: var(--primary); }
+    .status.rejected { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .error { color: var(--danger); font-size: 0.85rem; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem; }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+    .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
+    .form-actions { display: flex; gap: 0.6rem; margin-top: 0.5rem; }
+    .form-actions button { flex: 1; }
+    @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="login" class="login-box">
+      <h1 style="margin-bottom:1rem">Admin Login</h1>
+      <input type="password" id="password" placeholder="Admin password">
+      <button style="width:100%" onclick="login()">Login</button>
+      <p id="login-error" class="error" style="margin-top:0.6rem"></p>
+    </div>
+
+    <div id="dash" class="hidden">
+      <div class="header">
+        <h1>Payments Admin</h1>
+        <button class="btn-secondary btn-sm" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="label">Pending</div><div class="value" id="s-pending">—</div></div>
+        <div class="stat"><div class="label">Paid</div><div class="value" id="s-paid">—</div></div>
+        <div class="stat"><div class="label">Revenue ₦</div><div class="value" id="s-revenue">—</div></div>
+        <div class="stat"><div class="label">Methods</div><div class="value" id="s-methods">—</div></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-t="orders" onclick="tab('orders')">Orders</button>
+        <button class="tab" data-t="methods" onclick="tab('methods')">Payment Methods</button>
+        <button class="tab" data-t="products" onclick="tab('products')">Products</button>
+      </div>
+
+      <div id="t-orders">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Ref</th><th>Email</th><th>Amount</th><th>Method</th><th>Status</th><th></th></tr></thead>
+            <tbody id="orders-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="t-methods" class="hidden">
+        <button class="btn-sm" style="margin-bottom:0.8rem" onclick="openMethod()">+ Add Method</button>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Type</th><th>Label</th><th>Details</th><th>Active</th><th></th></tr></thead>
+            <tbody id="methods-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="t-products" class="hidden">
+        <button class="btn-sm" style="margin-bottom:0.8rem" onclick="openProduct()">+ Add Product</button>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Price</th><th>Credits</th><th>Active</th><th></th></tr></thead>
+            <tbody id="products-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Method modal -->
+  <div id="method-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="method-title" style="margin-bottom:1rem">Add Payment Method</h2>
+      <input type="hidden" id="m-id">
+      <label style="font-size:0.8rem;color:var(--muted)">Type</label>
+      <select id="m-type">
+        <option value="bank">Bank</option>
+        <option value="crypto">Crypto</option>
+        <option value="giftcard">Gift Card</option>
+      </select>
+      <input id="m-label" placeholder="Label (e.g. Opay - Nkechi)">
+      <div id="bank-fields">
+        <input id="m-bank" placeholder="Bank name">
+        <input id="m-accname" placeholder="Account name">
+        <input id="m-accnum" placeholder="Account number">
+      </div>
+      <div id="crypto-fields" class="hidden">
+        <input id="m-address" placeholder="Crypto address">
+        <input id="m-network" placeholder="Network (TRC20)">
+      </div>
+      <div id="gift-fields" class="hidden">
+        <textarea id="m-gift" rows="3" placeholder="Gift card instructions"></textarea>
+      </div>
+      <label style="font-size:0.85rem"><input type="checkbox" id="m-active" checked> Active</label>
+      <div class="form-actions">
+        <button class="btn-secondary" onclick="closeMethod()">Cancel</button>
+        <button onclick="saveMethod()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product modal -->
+  <div id="product-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 style="margin-bottom:1rem">Product</h2>
+      <input type="hidden" id="p-id">
+      <input id="p-name" placeholder="Name">
+      <input id="p-price" type="number" placeholder="Price (₦)">
+      <input id="p-credits" type="number" placeholder="Credits">
+      <input id="p-desc" placeholder="Description">
+      <label style="font-size:0.85rem"><input type="checkbox" id="p-active" checked> Active</label>
+      <div class="form-actions">
+        <button class="btn-secondary" onclick="closeProduct()">Cancel</button>
+        <button onclick="saveProduct()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let pw = localStorage.getItem('admin_pw') || '';
+
+    document.getElementById('m-type').onchange = function() {
+      document.getElementById('bank-fields').classList.toggle('hidden', this.value !== 'bank');
+      document.getElementById('crypto-fields').classList.toggle('hidden', this.value !== 'crypto');
+      document.getElementById('gift-fields').classList.toggle('hidden', this.value !== 'giftcard');
+    };
+
+    async function login() {
+      pw = document.getElementById('password').value;
+      try {
+        const r = await fetch('/api/admin/stats', { headers: { 'x-admin-password': pw } });
+        if (!r.ok) throw new Error('Wrong password');
+        localStorage.setItem('admin_pw', pw);
+        showDash();
+      } catch (e) {
+        document.getElementById('login-error').textContent = e.message || 'Failed';
+      }
+    }
+    document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+    function logout() {
+      localStorage.removeItem('admin_pw'); pw = '';
+      document.getElementById('dash').classList.add('hidden');
+      document.getElementById('login').classList.remove('hidden');
+    }
+
+    async function showDash() {
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('dash').classList.remove('hidden');
+      await Promise.all([loadStats(), loadOrders(), loadMethods(), loadProducts()]);
+    }
+
+    function tab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.t === name));
+      ['orders','methods','products'].forEach(n => document.getElementById('t-' + n).classList.toggle('hidden', n !== name));
+    }
+
+    async function api(path, opts = {}) {
+      const r = await fetch(path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': pw, ...(opts.headers || {}) }
+      });
+      if (r.status === 401) { logout(); throw new Error('Unauthorized'); }
+      return r.json();
+    }
+
+    async function loadStats() {
+      const s = await api('/api/admin/stats');
+      document.getElementById('s-pending').textContent = s.pending;
+      document.getElementById('s-paid').textContent = s.paid;
+      document.getElementById('s-revenue').textContent = Number(s.revenue).toLocaleString();
+      document.getElementById('s-methods').textContent = s.methods;
+    }
+
+    async function loadOrders() {
+      const orders = await api('/api/admin/orders');
+      document.getElementById('orders-body').innerHTML = orders.map(o => {
+        const d = o.payment_detail || {};
+        let detail = o.payment_type;
+        if (d.account_number) detail = d.bank_name + ' ' + d.account_number;
+        if (d.crypto_address) detail = (d.crypto_network || '') + ' ' + d.crypto_address.slice(0, 12) + '...';
+        return `<tr>
+          <td>${new Date(o.created_at).toLocaleString()}</td>
+          <td><code>${esc(o.reference)}</code></td>
+          <td>${esc(o.email)}</td>
+          <td>₦${Number(o.amount).toLocaleString()}</td>
+          <td style="font-size:0.8rem">${esc(detail)}</td>
+          <td><span class="status ${o.status}">${o.status}</span></td>
+          <td style="white-space:nowrap">
+            ${o.status === 'pending' ? `
+              <button class="btn-sm" onclick="confirmOrder('${o.reference}')">Confirm</button>
+              <button class="btn-sm btn-danger" onclick="rejectOrder('${o.reference}')">Reject</button>
+            ` : ''}
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No orders</td></tr>';
+    }
+
+    async function confirmOrder(ref) {
+      if (!confirm('Confirm payment ' + ref + '?')) return;
+      await api('/api/admin/orders/' + ref + '/confirm', { method: 'POST' });
+      await loadOrders(); await loadStats();
+    }
+    async function rejectOrder(ref) {
+      if (!confirm('Reject ' + ref + '?')) return;
+      await api('/api/admin/orders/' + ref + '/reject', { method: 'POST' });
+      await loadOrders(); await loadStats();
+    }
+
+    async function loadMethods() {
+      const methods = await api('/api/admin/methods');
+      document.getElementById('methods-body').innerHTML = methods.map(m => {
+        let detail = '';
+        if (m.type === 'bank') detail = `${m.bank_name || ''} | ${m.account_name || ''} | ${m.account_number || ''}`;
+        if (m.type === 'crypto') detail = `${m.crypto_network || ''} ${m.crypto_address || ''}`;
+        if (m.type === 'giftcard') detail = (m.giftcard_info || '').slice(0, 40);
+        return `<tr>
+          <td>${m.type}</td>
+          <td>${esc(m.label)}</td>
+          <td style="font-size:0.8rem">${esc(detail)}</td>
+          <td>${m.active ? '✅' : '❌'}</td>
+          <td>
+            <button class="btn-sm btn-secondary" onclick='editMethod(${JSON.stringify(m)})'>Edit</button>
+            <button class="btn-sm btn-danger" onclick="delMethod(${m.id})">Del</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function openMethod() {
+      document.getElementById('method-title').textContent = 'Add Payment Method';
+      document.getElementById('m-id').value = '';
+      document.getElementById('m-type').value = 'bank';
+      document.getElementById('m-type').onchange();
+      ['m-label','m-bank','m-accname','m-accnum','m-address','m-network','m-gift'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('m-active').checked = true;
+      document.getElementById('method-modal').classList.remove('hidden');
+    }
+    function editMethod(m) {
+      document.getElementById('method-title').textContent = 'Edit Method';
+      document.getElementById('m-id').value = m.id;
+      document.getElementById('m-type').value = m.type;
+      document.getElementById('m-type').onchange();
+      document.getElementById('m-label').value = m.label || '';
+      document.getElementById('m-bank').value = m.bank_name || '';
+      document.getElementById('m-accname').value = m.account_name || '';
+      document.getElementById('m-accnum').value = m.account_number || '';
+      document.getElementById('m-address').value = m.crypto_address || '';
+      document.getElementById('m-network').value = m.crypto_network || '';
+      document.getElementById('m-gift').value = m.giftcard_info || '';
+      document.getElementById('m-active').checked = !!m.active;
+      document.getElementById('method-modal').classList.remove('hidden');
+    }
+    function closeMethod() { document.getElementById('method-modal').classList.add('hidden'); }
+
+    async function saveMethod() {
+      const id = document.getElementById('m-id').value;
+      const body = {
+        type: document.getElementById('m-type').value,
+        label: document.getElementById('m-label').value,
+        bank_name: document.getElementById('m-bank').value,
+        account_name: document.getElementById('m-accname').value,
+        account_number: document.getElementById('m-accnum').value,
+        crypto_address: document.getElementById('m-address').value,
+        crypto_network: document.getElementById('m-network').value,
+        giftcard_info: document.getElementById('m-gift').value,
+        active: document.getElementById('m-active').checked
+      };
+      if (id) await api('/api/admin/methods/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      else await api('/api/admin/methods', { method: 'POST', body: JSON.stringify(body) });
+      closeMethod(); await loadMethods(); await loadStats();
+    }
+    async function delMethod(id) {
+      if (!confirm('Delete this method?')) return;
+      await api('/api/admin/methods/' + id, { method: 'DELETE' });
+      await loadMethods(); await loadStats();
+    }
+
+    async function loadProducts() {
+      const products = await api('/api/admin/products');
+      document.getElementById('products-body').innerHTML = products.map(p => `
+        <tr>
+          <td>${esc(p.name)}</td>
+          <td>₦${Number(p.price).toLocaleString()}</td>
+          <td>${p.credits}</td>
+          <td>${p.active ? '✅' : '❌'}</td>
+          <td><button class="btn-sm btn-secondary" onclick='editProduct(${JSON.stringify(p)})'>Edit</button></td>
+        </tr>
+      `).join('');
+    }
+    function openProduct() {
+      document.getElementById('p-id').value = '';
+      ['p-name','p-price','p-credits','p-desc'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('p-active').checked = true;
+      document.getElementById('product-modal').classList.remove('hidden');
+    }
+    function editProduct(p) {
+      document.getElementById('p-id').value = p.id;
+      document.getElementById('p-name').value = p.name;
+      document.getElementById('p-price').value = p.price;
+      document.getElementById('p-credits').value = p.credits;
+      document.getElementById('p-desc').value = p.description || '';
+      document.getElementById('p-active').checked = !!p.active;
+      document.getElementById('product-modal').classList.remove('hidden');
+    }
+    function closeProduct() { document.getElementById('product-modal').classList.add('hidden'); }
+    async function saveProduct() {
+      const id = document.getElementById('p-id').value;
+      const body = {
+        name: document.getElementById('p-name').value,
+        price: document.getElementById('p-price').value,
+        credits: document.getElementById('p-credits').value,
+        description: document.getElementById('p-desc').value,
+        active: document.getElementById('p-active').checked
+      };
+      if (id) await api('/api/admin/products/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      else await api('/api/admin/products', { method: 'POST', body: JSON.stringify(body) });
+      closeProduct(); await loadProducts();
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    if (pw) {
+      fetch('/api/admin/stats', { headers: { 'x-admin-password': pw } })
+        .then(r => r.ok ? showDash() : logout()).catch(() => {});
+    }
+  </script>
+</body>
+</html>
